@@ -105,4 +105,32 @@ class ReservaServiceTest {
 
         verify(reservaRepository, never()).save(any(Reserva.class));
     }
+
+    @Test
+    void confirmarReserva_conIdExistente_cambiaEstadoAConfirmada() {
+        Usuario cliente = new Usuario("Juan Perez", "0999999999", "juan@example.com", Usuario.Rol.CLIENTE);
+        Servicio servicio = new Servicio("Consulta General", 25, "Consulta médica general");
+        Reserva reservaPendiente = new Reserva(cliente, servicio, LocalDate.of(2026, 8, 1), LocalTime.of(10, 30));
+        reservaPendiente.setIdReserva(7L);
+        reservaPendiente.setEstado("Pendiente");
+
+        when(reservaRepository.findById(7L)).thenReturn(Optional.of(reservaPendiente));
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservaResponse response = reservaService.confirmarReserva(7L);
+
+        assertThat(response.getEstado()).isEqualTo("Confirmada");
+        verify(reservaRepository).save(reservaPendiente);
+    }
+
+    @Test
+    void actualizarEstadoReserva_conIdInexistente_lanzaExcepcionYNoGuarda() {
+        when(reservaRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservaService.rechazarReserva(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Reserva no encontrada");
+
+        verify(reservaRepository, never()).save(any(Reserva.class));
+    }
 }
